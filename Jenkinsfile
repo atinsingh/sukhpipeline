@@ -1,11 +1,17 @@
 pipeline {
+    environment {
+        registry = "pragra/testimage"
+        registryCredential = 'dockerhub'
+    }
+
     agent any
+
     tools {
         maven "m3"
         jdk "JDK8"
     }
     triggers {
-            pollSCM("* * * * *")
+        pollSCM("* * * * *")
     }
     stages {
         stage('Checkout') {
@@ -25,18 +31,18 @@ pipeline {
             }
         }
         stage('Test Report') {
-          steps {
-              script {
-                junit '**/surefire-reports/*.xml'
-              }
-          }
+            steps {
+                script {
+                    junit '**/surefire-reports/*.xml'
+                }
+            }
         }
         stage('Sonar Analysis') {
             steps {
                 echo 'Sonar Scanner'
-               	withSonarQubeEnv('sonar67') {
-			    	sh "mvn sonar:sonar"
-			    }
+                withSonarQubeEnv('sonar67') {
+                    sh "mvn sonar:sonar"
+                }
             }
         }
         stage('Package') {
@@ -53,31 +59,31 @@ pipeline {
         }
         stage('Archive Artifact') {
             when {
-                  branch 'master'
+                branch 'master'
             }
             steps {
 
                 rtMavenDeployer (
-                    id: "mvn_deployer1",
-                    serverId: "ART",
-                    releaseRepo: "libs-release-local",
-                    snapshotRepo: "libs-snapshot-local"
+                        id: "mvn_deployer1",
+                        serverId: "ART",
+                        releaseRepo: "libs-release-local",
+                        snapshotRepo: "libs-snapshot-local"
                 )
 
 
                 rtMavenResolver (
-                    id: "mvn_resolver1",
-                    serverId: "ART",
-                    releaseRepo: "libs-release",
-                    snapshotRepo: "libs-snapshot"
+                        id: "mvn_resolver1",
+                        serverId: "ART",
+                        releaseRepo: "libs-release",
+                        snapshotRepo: "libs-snapshot"
                 )
 
                 rtMavenRun (
-                    tool: 'm3',
-                    pom: 'pom.xml',
-                    goals: 'install',
-                    resolverId: 'mvn_resolver1',
-                    deployerId: 'mvn_deployer1'
+                        tool: 'm3',
+                        pom: 'pom.xml',
+                        goals: 'install',
+                        resolverId: 'mvn_resolver1',
+                        deployerId: 'mvn_deployer1'
                 )
                 // script {
                 //     archive '**/*.jar'
@@ -88,43 +94,26 @@ pipeline {
         }
         stage('Publish Build Info') {
             steps {
-                 rtPublishBuildInfo (
-                 serverId: "ART"
+                rtPublishBuildInfo (
+                        serverId: "ART"
                 )
             }
         }
-        stage('Promote Build') {
-            steps {
-            rtPromote (
-            // Mandatory parameter
- 
-            buildName: '$JOB_NAME',
-            buildNumber: '$BUILD_ID',
-                // Artifactory server ID from Jenkins configuration, or from configuration in the pipeline script
-            serverId: 'ART',
-            // Name of target repository in Artifactory
-            targetRepo: 'libs-release-local',
- 
-            // Optional parameters
- 
-            // Comment and Status to be displayed in the Build History tab in Artifactory
-            comment: 'this is the promotion comment',
-            status: 'Released',
-            // Specifies the source repository for build artifacts.
-            sourceRepo: 'libs-snapshot-local',
-            // Indicates whether to promote the build dependencies, in addition to the artifacts. False by default.
-            includeDependencies: true,
-            // Indicates whether to fail the promotion process in case of failing to move or copy one of the files. False by default
-            failFast: true,
-            // Indicates whether to copy the files. Move is the default.
-            copy: true
-            )
-          }
+        stage('Building image') {
+            steps{
+                script {
+                    docker.build registry + ":$BUILD_NUMBER"
+                }
+            }
         }
-        stage('Branch Stage') {
-          steps {
-            echo 'branch'
-          }
+        stage('Deploy Image') {
+            steps{
+                script {
+                    docker.withRegistry( '', registryCredential ) {
+                        dockerImage.push()
+                    }
+                }
+            }
         }
 
     }

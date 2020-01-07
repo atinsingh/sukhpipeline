@@ -8,10 +8,10 @@
         <version>2.1.5.RELEASE</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>co.pragra.jenkinslearning</groupId>
-    <artifactId>ci-pipeline-pragra</artifactId>
+    <groupId>sukh.test</groupId>
+    <artifactId>ci-cd-pipeline</artifactId>
     <version>0.0.1</version>
-    <name>ci-pipeline-pragra</name>
+    <name>ci-cd-pipeline</name>
     <description>CI/CD pipeline demo</description>
 
     <properties>
